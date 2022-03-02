@@ -59,6 +59,8 @@ class FirestoreDataTable extends StatefulWidget {
     this.dragStartBehavior = DragStartBehavior.start,
     this.arrowHeadColor,
     this.checkboxHorizontalMargin,
+    this.disablePropertyChangeOnEdit = false,
+    this.useMultiplyLinesForString = false,
   })  : assert(
           columnLabels is LinkedHashMap,
           'only LinkedHashMap are supported as header',
@@ -172,6 +174,17 @@ class FirestoreDataTable extends StatefulWidget {
   /// and the content in the first data column. This value defaults to 24.0.
 
   final double? checkboxHorizontalMargin;
+
+  ///Disables [DropdownButtonFormField] in edit dialog.
+  ///
+  ///If null, then set to [false].
+  final bool disablePropertyChangeOnEdit;
+
+  ///Enables multiply lines for [TextField] in editing dialog.
+  ///
+  ///If set to [true], [minLines] and [maxLines] is set to 8,[keyboardType] is
+  ///set to [TextInputType.multiline] and Editing dialog height is set to [320]
+  final bool useMultiplyLinesForString;
 
   @override
   // ignore: library_private_types_in_public_api
@@ -319,11 +332,14 @@ class _FirestoreTableState extends State<FirestoreDataTable> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _PropertyTypeDropdown(
+                              disable: widget.disablePropertyChangeOnEdit,
                               formState: formState,
                               onTypeChanged: onTypeChanged,
                             ),
                             const SizedBox(height: 8),
                             _PropertyTypeForm(
+                              useMultiplyLinesForString:
+                                  widget.useMultiplyLinesForString,
                               formState: formState,
                               onFormStateChange: onFormChange,
                             ),
@@ -357,10 +373,12 @@ class _PropertyTypeForm extends StatelessWidget {
     Key? key,
     required this.formState,
     required this.onFormStateChange,
+    required this.useMultiplyLinesForString,
   }) : super(key: key);
 
   final _FormState formState;
   final ValueChanged<_FormState> onFormStateChange;
+  final bool useMultiplyLinesForString;
 
   @override
   Widget build(BuildContext context) {
@@ -386,9 +404,10 @@ class _PropertyTypeForm extends StatelessWidget {
       return SizedBox(
         width: 200,
         child: TextField(
-          keyboardType: TextInputType.multiline,
-          minLines: 8,
-          maxLines: 8,
+          keyboardType:
+              useMultiplyLinesForString ? TextInputType.multiline : null,
+          minLines: useMultiplyLinesForString ? 8 : 1,
+          maxLines: useMultiplyLinesForString ? 8 : 1,
           autofocus: true,
           controller: formState.controller,
           decoration: InputDecoration(labelText: localizations.valueLabel),
@@ -491,11 +510,14 @@ class _PropertyTypeDropdown extends StatelessWidget {
     Key? key,
     required this.formState,
     required this.onTypeChanged,
+    required this.disable,
   }) : super(key: key);
 
   final _FormState? formState;
 
   final ValueChanged<_PropertyType?> onTypeChanged;
+
+  final bool disable;
 
   @override
   Widget build(BuildContext context) {
@@ -539,7 +561,7 @@ class _PropertyTypeDropdown extends StatelessWidget {
           child: Text(localizations.referenceLabel),
         ),
       ],
-      onChanged: null,
+      onChanged: disable ? null : onTypeChanged,
     );
   }
 }
