@@ -30,6 +30,7 @@ dependencies:
   google_sign_in: ^5.2.1
   sign_in_with_apple: ^3.3.0
   twitter_login: ^4.0.1
+  data_table_2: ^2.2.1
 
 dev_dependencies:
   flutter_test:

@@ -1,12 +1,12 @@
 import 'dart:collection';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutterfire_ui/firestore.dart';
 import 'package:flutterfire_ui/i10n.dart';
-
-import 'query_builder.dart';
 
 /// {@template flutterfire_ui.firestore_table}
 /// A [PaginatedDataTable] that is connected to Firestore.
@@ -15,7 +15,8 @@ import 'query_builder.dart';
 /// - list the columns.
 /// - give them a label.
 /// - order the columns.
-/// - let [FirestoreDataTable] know what are the expected keys in a Firestore document.
+/// - let [FirestoreDataTable] know what are the expected keys in a Firestore
+/// document.
 ///
 /// An example usage would be:
 ///
@@ -58,10 +59,13 @@ class FirestoreDataTable extends StatefulWidget {
     this.dragStartBehavior = DragStartBehavior.start,
     this.arrowHeadColor,
     this.checkboxHorizontalMargin,
+    this.disablePropertyChangeOnEdit = false,
+    this.useMultiplyLinesForString = false,
   })  : assert(
           columnLabels is LinkedHashMap,
           'only LinkedHashMap are supported as header',
-        ), // using an assert instead of a type because `<A, B>{}` types as `Map` but is an instance of `LinkedHashMap`
+        ), // using an assert instead of a type because `<A, B>{}` types as
+        //`Map` but is an instance of `LinkedHashMap`
         super(key: key);
 
   /// The firestore query that will be displayed
@@ -73,7 +77,8 @@ class FirestoreDataTable extends StatefulWidget {
   /// The columns and their labels based on the property name in Firestore
   final Map<String, Widget> columnLabels;
 
-  /// When specified, will be called whenever an interaction with Firestore failed,
+  /// When specified, will be called whenever an interaction with Firestore
+  /// failed,
   /// when as when trying to delete an item without the proper rights.
   final void Function(Object error, StackTrace stackTrace)? onError;
 
@@ -130,7 +135,8 @@ class FirestoreDataTable extends StatefulWidget {
   /// When a checkbox is displayed, it is also the margin between the checkbox
   /// the content in the first data column.
   ///
-  /// This value defaults to 24.0 to adhere to the Material Design specifications.
+  /// This value defaults to 24.0 to adhere to the Material Design
+  /// specifications.
   ///
   /// If [checkboxHorizontalMargin] is null, then [horizontalMargin] is also the
   /// margin between the edge of the table and the checkbox, as well as the
@@ -139,7 +145,8 @@ class FirestoreDataTable extends StatefulWidget {
 
   /// The horizontal margin between the contents of each data column.
   ///
-  /// This value defaults to 56.0 to adhere to the Material Design specifications.
+  /// This value defaults to 56.0 to adhere to the Material Design
+  /// specifications.
   final double columnSpacing;
 
   /// {@macro flutter.material.dataTable.showCheckboxColumn}
@@ -167,6 +174,17 @@ class FirestoreDataTable extends StatefulWidget {
   /// and the content in the first data column. This value defaults to 24.0.
 
   final double? checkboxHorizontalMargin;
+
+  ///Disables [DropdownButtonFormField] in edit dialog.
+  ///
+  ///If null, then set to [false].
+  final bool disablePropertyChangeOnEdit;
+
+  ///Enables multiply lines for [TextField] in editing dialog.
+  ///
+  ///If set to [true], [minLines] and [maxLines] is set to 8,[keyboardType] is
+  ///set to [TextInputType.multiline] and Editing dialog height is set to [320]
+  final bool useMultiplyLinesForString;
 
   @override
   // ignore: library_private_types_in_public_api
@@ -226,12 +244,12 @@ class _FirestoreTableState extends State<FirestoreDataTable> {
                   onPressed: source.onDeleteSelectedItems,
                 ),
             ];
-            return PaginatedDataTable(
+            return PaginatedDataTable2(
               source: source,
+              minWidth: 6000,
               onSelectAll: selectionEnabled ? source.onSelectAll : null,
               onPageChanged: widget.onPageChanged,
               showCheckboxColumn: widget.showCheckboxColumn,
-              arrowHeadColor: widget.arrowHeadColor,
               checkboxHorizontalMargin: widget.checkboxHorizontalMargin,
               columnSpacing: widget.columnSpacing,
               dataRowHeight: widget.dataRowHeight,
@@ -289,42 +307,49 @@ class _FirestoreTableState extends State<FirestoreDataTable> {
             }
 
             return Dialog(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
-                child: DropdownButtonHideUnderline(
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      inputDecorationTheme: const InputDecorationTheme(
-                        border: OutlineInputBorder(),
-                        isDense: true,
+              child: SizedBox(
+                width: 500,
+                height: formState is _StringFormState ? 320 : 190,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+                  child: DropdownButtonHideUnderline(
+                    child: Theme(
+                      data: Theme.of(context).copyWith(
+                        inputDecorationTheme: const InputDecorationTheme(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
                       ),
-                    ),
-                    // Make sure that the modal is as small as possible, yet
-                    // allow the button bar to fill the width
-                    child: IntrinsicWidth(
-                      child: Column(
-                        // Ensures that switching between type correctly
-                        // applies "autoFocus" to the new inputs
-                        key: ObjectKey(formState.type),
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _PropertyTypeDropdown(
-                            formState: formState,
-                            onTypeChanged: onTypeChanged,
-                          ),
-                          const SizedBox(height: 8),
-                          _PropertyTypeForm(
-                            formState: formState,
-                            onFormStateChange: onFormChange,
-                          ),
-                          const SizedBox(height: 10),
-                          _EditModalButtonBar(
-                            formState: formState,
-                            reference: snapshot.reference,
-                          ),
-                        ],
+                      // Make sure that the modal is as small as possible, yet
+                      // allow the button bar to fill the width
+                      child: IntrinsicWidth(
+                        child: Column(
+                          // Ensures that switching between type correctly
+                          // applies "autoFocus" to the new inputs
+                          key: ObjectKey(formState.type),
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _PropertyTypeDropdown(
+                              disable: widget.disablePropertyChangeOnEdit,
+                              formState: formState,
+                              onTypeChanged: onTypeChanged,
+                            ),
+                            const SizedBox(height: 8),
+                            _PropertyTypeForm(
+                              useMultiplyLinesForString:
+                                  widget.useMultiplyLinesForString,
+                              formState: formState,
+                              onFormStateChange: onFormChange,
+                            ),
+                            const SizedBox(height: 10),
+                            _EditModalButtonBar(
+                              formState: formState,
+                              reference: snapshot.reference,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -348,10 +373,12 @@ class _PropertyTypeForm extends StatelessWidget {
     Key? key,
     required this.formState,
     required this.onFormStateChange,
+    required this.useMultiplyLinesForString,
   }) : super(key: key);
 
   final _FormState formState;
   final ValueChanged<_FormState> onFormStateChange;
+  final bool useMultiplyLinesForString;
 
   @override
   Widget build(BuildContext context) {
@@ -377,6 +404,10 @@ class _PropertyTypeForm extends StatelessWidget {
       return SizedBox(
         width: 200,
         child: TextField(
+          keyboardType:
+              useMultiplyLinesForString ? TextInputType.multiline : null,
+          minLines: useMultiplyLinesForString ? 8 : 1,
+          maxLines: useMultiplyLinesForString ? 8 : 1,
           autofocus: true,
           controller: formState.controller,
           decoration: InputDecoration(labelText: localizations.valueLabel),
@@ -479,11 +510,14 @@ class _PropertyTypeDropdown extends StatelessWidget {
     Key? key,
     required this.formState,
     required this.onTypeChanged,
+    required this.disable,
   }) : super(key: key);
 
   final _FormState? formState;
 
   final ValueChanged<_PropertyType?> onTypeChanged;
+
+  final bool disable;
 
   @override
   Widget build(BuildContext context) {
@@ -527,7 +561,7 @@ class _PropertyTypeDropdown extends StatelessWidget {
           child: Text(localizations.referenceLabel),
         ),
       ],
-      onChanged: onTypeChanged,
+      onChanged: disable ? null : onTypeChanged,
     );
   }
 }
@@ -789,7 +823,7 @@ class _Source extends DataTableSource {
   final void Function(Object error, StackTrace stackTrace)? Function()
       getOnError;
 
-  var _selectedRowIds = <String>{};
+  final _selectedRowIds = <String>{};
 
   @override
   int get selectedRowCount => _selectedRowIds.length;
@@ -835,7 +869,10 @@ class _Source extends DataTableSource {
       cells: [
         for (final head in getHeaders().keys)
           DataCell(
-            _ValueView(data[head]),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: _ValueView(data[head]),
+            ),
             onTap: () {
               onEditItem(
                 doc,
@@ -917,7 +954,12 @@ class _ValueView extends StatelessWidget {
         '${value.longitude.abs()}° $longitudeLabel]',
       );
     } else {
-      return Text(value.toString());
+      return Center(
+        child: Text(
+          value.toString(),
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
     }
   }
 }
